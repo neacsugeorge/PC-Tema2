@@ -1,4 +1,6 @@
 *.o
+/**/*.o
 *.log
 /client
 /server
+.vscode

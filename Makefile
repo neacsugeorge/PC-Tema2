@@ -3,11 +3,14 @@ FLAGS=-Wall
 
 build: server client
 
-server: server.o
+server: server.o src/CardManager.o
 	$(GCC) -o $@ $^
 
 server.o: server.c
 	$(GCC) $(FLAGS) -c $^
+
+src/CardManager.o: src/CardManager.c src/CardManager.h
+	$(GCC) $(FLAGS) -c $< -o $@
 
 client: client.o
 	$(GCC) -o $@ $^
