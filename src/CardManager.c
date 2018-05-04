@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "CardManager.h"
 
 Database * createDatabase() {
@@ -49,6 +50,7 @@ void fillDatabase(Database * db, char * filename) {
     for (; i < db -> length; i++) {
         Card * new_card = (Card *)malloc (sizeof(Card));
 
+        new_card -> locked = 0;
         fscanf(file, "%12s %12s %6s %4s %8s %lf",
             &new_card -> nume, &new_card -> prenume,
             &new_card -> numar_card, &new_card -> pin,
@@ -70,6 +72,40 @@ Card * getCard(Database * db, char numar_card[6]) {
     }
 
     return NULL;
+}
+
+int canTransfer(Card * from, double amount) {
+    if (from -> sold - amount < EPSILON) {
+        return 0;
+    }
+
+    return 1;
+}
+
+void transfer(Card * from, Card * to, double amount) {
+    if (!canTransfer(from, amount)) {
+        return;
+    }
+
+    from -> sold -= amount;
+    to -> sold += amount;
+}
+
+void lock(Card * card) {
+    card -> locked = 1;
+}
+
+unsigned char unlock(Card * card, char * parola_secreta) {
+    if (strcmp(card -> parola_secreta, parola_secreta) == 0) {
+        card -> locked = 0;
+        return 1;
+    }
+
+    return 0;
+}
+
+unsigned char isLocked(Card * card) {
+    return card -> locked;
 }
 
 void printCard(Card card) {
