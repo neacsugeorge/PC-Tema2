@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include "src/CardManager.h"
 #include "src/ConnectionManager.h"
+#include "src/Logger.h"
+#include "src/CommandManager.h"
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -18,7 +20,12 @@ int main(int argc, char *argv[]) {
     puts("Server on");
 
     while (1) {
-        serverPrintCommand(serverGetCommand(server));
+        ServerCommand * command = serverGetCommand(server);
+        serverPrintCommand(command);
+
+        if (command -> type == SERVER_TCP_RECEIVE || command -> type == SERVER_UDP_RECEIVE) {
+            serverSendCommand(server, command);
+        }
     }
     
     return 0;
