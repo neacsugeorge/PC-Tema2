@@ -57,6 +57,7 @@ typedef struct {
 
 Server * createServer(char * server_port);
 ServerCommand * serverGetCommand(Server * server);
+void serverSendCommand(Server * server, ServerCommand * command);
 void serverPrintCommand(ServerCommand * command);
 
 #endif

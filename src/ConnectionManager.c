@@ -257,6 +257,19 @@ ServerCommand * serverGetCommand(Server * server) {
     return command;
 }
 
+void serverSendCommand(Server * server, ServerCommand * command) {
+    int command_length = strlen(command -> command);
+    socklen_t address_len = sizeof(command -> source);
+
+    if (command -> type == SERVER_TCP_RECEIVE) {
+        send(command -> socket, command -> command, command_length, 0);
+    }
+    else if (command -> type == SERVER_UDP_RECEIVE) {
+        sendto(server -> udp_socket, command -> command, command_length, 0,
+                (const struct sockaddr *)&command -> source, address_len);
+    }
+}
+
 void serverPrintCommand(ServerCommand * command) {
     const char * TYPE[] = {"INPUT", "TCP_CONNECT", "TCP_DISCONNECT", "TCP_RECEIVE", "UDP_RECEIVE"};
 
