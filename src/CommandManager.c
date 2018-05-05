@@ -5,7 +5,12 @@
 char * COMMAND[] = {
     ERROR_CMD,
     LOGIN_CMD,
-    LOGOUT_CMD
+    LOGOUT_CMD,
+    LISTSOLD_CMD,
+    TRANSFER_CMD,
+    UNLOCK_CMD,
+    QUIT_CMD,
+    MESSAGE_CMD
 };
 
 Login * addLogin(Login * start, Login * login) {
@@ -155,6 +160,9 @@ void maiBineDadeamLaASE(Manager * manager) {
         case ERROR:
                 handleError(manager, rawCommand);
             break;
+        case MESSAGE:
+                handleMessage(manager, rawCommand);
+            break;
         case LOGIN:
                 handleLogin(manager, rawCommand);
             break;
@@ -201,6 +209,21 @@ void handleError(Manager * manager, void * command) {
     }
 }
 
+void handleMessage(Manager * manager, void * command) {
+    if (manager -> type == MANAGER_CLIENT) {
+        char message[BUFFER_LENGTH];
+        sscanf(command, "message %s", message);
+        
+        int socket_type = ((ClientCommand *)command) -> socket_type;
+        if (socket_type == CLIENT_TCP_SOCKET) {
+            log_message(manager -> logger, IBANK, message, 0);
+        }
+        else if (socket_type == CLIENT_UDP_SOCKET) {
+            log_message(manager -> logger, UNLOCK, message, 0);
+        }
+    }
+}
+
 void handleLogin(Manager * manager, void * command) {
     if (manager -> type == MANAGER_CLIENT) {
         if (manager -> loggedIn) {
@@ -215,6 +238,7 @@ void handleLogin(Manager * manager, void * command) {
         char numar_card[7];
         char pin[5];
 
+        int socket = ((ServerCommand *)command) -> socket;
         sscanf(((ServerCommand *)command) -> command, "login %6s %4s", (char *)numar_card, (char *)pin);
 
         Card * card = getCard(manager -> db, numar_card);
@@ -222,6 +246,92 @@ void handleLogin(Manager * manager, void * command) {
             snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_UNKNOWN_CARD);
             serverSendCommand(manager -> connection, command);
             return;
+        }
+        else {
+            if (isLocked(card)) {
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_CARD_BLOCKED);
+                serverSendCommand(manager -> connection, command);
+                return;
+            }
+
+            Login * login = NULL;
+            if (strncmp(card -> pin, pin, 4) != 0) {
+                // Wrong PIN
+                login = findLoginBySocket(manager -> loginManager, socket);
+
+                if (login == NULL) {
+                    login = (Login *)malloc(sizeof(Login));
+                    login -> socket = socket;
+                    strcpy(login -> card, numar_card);
+                    login -> attempts = 1;
+                    login -> active = 0;
+
+                    manager -> loginManager = addLogin(manager -> loginManager, login);
+                }
+                else {
+                    if (findLoginByCard(login, numar_card) == login) {
+                        login -> attempts ++;
+
+                        if (login -> attempts > 2) {
+                            lock(card);
+                            handleLogin(manager, command);
+                            return;
+                        }
+                    }
+                    else {
+                        strcpy(login -> card, numar_card);
+                        login -> attempts = 1;
+                    }
+                }
+
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_WRONG_PIN);
+            }
+            else {
+                // Good PIN
+                login = findLoginByCard(manager -> loginManager, numar_card);
+                Login * myLogin = findLoginBySocket(manager -> loginManager, socket);
+
+                if (login == myLogin) {
+                    if (login == NULL) {
+                        login = (Login *)malloc(sizeof(Login));
+                        manager -> loginManager = addLogin(manager -> loginManager, login);
+
+                        login -> socket = socket;
+                        strcpy(login -> card, numar_card);
+                    }
+
+                    login -> attempts = 0;
+                    login -> active = 1;
+
+                    snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message Welcome %s %s",
+                            card -> nume, card -> prenume);
+                }
+                else if (login != NULL) {
+                    while (login != NULL && !login -> active) {
+                        login = findLoginByCard(login -> next, numar_card);
+                    }
+
+                    // Existing active session with this card
+                    if (login != NULL) {
+                        snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_SESSION_EXISTS);
+                    }
+                    else {
+                        login = (Login *)malloc(sizeof(Login));
+                        manager -> loginManager = addLogin(manager -> loginManager, login);
+
+                        login -> socket = socket;
+                        strcpy(login -> card, numar_card);
+
+                        login -> attempts = 0;
+                        login -> active = 1;
+
+                        snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message Welcome %s %s",
+                                card -> nume, card -> prenume);
+                    }
+                }
+            }
+            
+            serverSendCommand(manager -> connection, command);
         }
     }
 }

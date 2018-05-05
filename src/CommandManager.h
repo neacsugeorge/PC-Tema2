@@ -15,11 +15,21 @@
 #define ERROR 0
 #define LOGIN 1
 #define LOGOUT 2
-#define CMD_COUNT 3
+#define LISTSOLD 3
+#define TRANSFER 4
+#define UNLOCK_ID 5
+#define QUIT 6
+#define MESSAGE 7
+#define CMD_COUNT 8
 
 #define ERROR_CMD "error"
 #define LOGIN_CMD "login"
 #define LOGOUT_CMD "logout"
+#define LISTSOLD_CMD "listsold"
+#define TRANSFER_CMD "transfer"
+#define UNLOCK_CMD "unlock"
+#define QUIT_CMD "quit"
+#define MESSAGE_CMD "message"
 
 typedef struct Login {
     int socket;
@@ -54,6 +64,7 @@ int getCommandID(char * command);
 int isUserInput(Manager * manager, void * command);
 
 void handleError(Manager * manager, void * command);
+void handleMessage(Manager * manager, void * command);
 void handleLogin(Manager * manager, void * command);
 
 

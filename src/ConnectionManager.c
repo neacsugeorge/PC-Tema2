@@ -58,6 +58,7 @@ ClientCommand * clientGetCommand(Client * client) {
     memset(command -> command, 0, BUFFER_LENGTH);
 
     fd_set descriptors = client -> descriptors;
+    int bytes_received = 0;
 
     if (select(client -> max_descriptor_id, &descriptors, NULL, NULL, NULL) > 0) {
         int i = 0;
@@ -69,11 +70,14 @@ ClientCommand * clientGetCommand(Client * client) {
                     command -> socket_type = CLIENT_INPUT;
                 }
                 else if (i == client -> tcp_socket) {
-                    recv(i, command -> command, BUFFER_LENGTH, 0);
+                    bytes_received = recv(i, command -> command, BUFFER_LENGTH, 0);
+                    if (bytes_received <= 0) {
+                        exit(0);
+                    }
                     command -> socket_type = CLIENT_TCP_SOCKET;
                 }
                 else if (i == client -> udp_socket) {
-                    recv(i, command -> command, BUFFER_LENGTH, 0);
+                    bytes_received = recv(i, command -> command, BUFFER_LENGTH, 0);
                     command -> socket_type = CLIENT_UDP_SOCKET;
                 }
                 else {
