@@ -62,7 +62,7 @@ void fillDatabase(Database * db, char * filename) {
     fclose(file);
 }
 
-Card * getCard(Database * db, char numar_card[6]) {
+Card * getCard(Database * db, char numar_card[7]) {
     int i = 0;
 
     for (; i < db -> length; i++) {

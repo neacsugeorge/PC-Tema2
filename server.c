@@ -11,21 +11,15 @@ int main(int argc, char *argv[]) {
         exit(0);
     }
 
-    Database * db = createDatabase();
-    fillDatabase(db, argv[2]);
-    printDatabase(*db);
-    printCard(*getCard(db, "111789"));
-    
-    Server * server = createServer(argv[1]);
+    Manager * manager = createManager(MANAGER_SERVER);
+    manager -> db = createDatabase();
+    manager -> connection = createServer(argv[1]);
+
+    fillDatabase(manager -> db, argv[2]);
     puts("Server on");
 
     while (1) {
-        ServerCommand * command = serverGetCommand(server);
-        serverPrintCommand(command);
-
-        if (command -> type == SERVER_TCP_RECEIVE || command -> type == SERVER_UDP_RECEIVE) {
-            serverSendCommand(server, command);
-        }
+        maiBineDadeamLaASE(manager);
     }
     
     return 0;

@@ -23,7 +23,7 @@ Database * createDatabase();
 void resizeDatabase(Database * db);
 void fillDatabase(Database * db, char * filename);
 
-Card * getCard(Database * db, char numar_card[6]);
+Card * getCard(Database * db, char numar_card[7]);
 int canTransfer(Card * from, double amount);
 void transfer(Card * from, Card * to, double amount);
 

@@ -35,7 +35,7 @@ typedef struct {
 
 Client * createClient(char * server_ip, char * server_port, Logger * logger);
 ClientCommand * clientGetCommand(Client * client);
-void clientSendCommand(Client * client, char command[BUFFER_LENGTH], int socket_type);
+void clientSendCommand(Client * client, ClientCommand * command);
 void clientClearCommand(ClientCommand * command);
 void clientPrintCommand(ClientCommand * command);
 void closeClient(Client * client);

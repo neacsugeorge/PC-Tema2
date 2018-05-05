@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "src/ConnectionManager.h"
+#include "src/CommandManager.h"
+#include "src/Logger.h"
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -9,16 +11,13 @@ int main(int argc, char *argv[]) {
     }
 
     puts("Client on");
-    Client * client = createClient(argv[1], argv[2], NULL);
 
-    int i = 0;
+    Manager * manager = createManager(MANAGER_CLIENT);
+    manager -> connection = createClient(argv[1], argv[2], NULL);;
+    manager -> logger = createLogger();
+
     while (1) {
-        ClientCommand * command = clientGetCommand(client);
-        clientPrintCommand(command);
-        
-        if (command -> socket_type == CLIENT_INPUT) {
-            clientSendCommand(client, command -> command, (i++ % 2) + 1);
-        }
+        maiBineDadeamLaASE(manager);
     }
 
     return 0;

@@ -47,7 +47,7 @@ typedef struct {
 
 Logger * createLogger();
 void log_error (Logger * logger, char * prefix, int code, char * extra);
-void log_message (Logger * logger, char * prefix, char * message);
+void log_message (Logger * logger, char * prefix, char * message, int userInput);
 void closeLogger(Logger * logger);
 
 #endif

@@ -91,20 +91,20 @@ ClientCommand * clientGetCommand(Client * client) {
     return command;
 }
 
-void clientSendCommand(Client * client, char command[BUFFER_LENGTH], int socket_type) {
+void clientSendCommand(Client * client, ClientCommand * command) {
     int socket = 0;
     
-    if (socket_type == CLIENT_TCP_SOCKET) {
+    if (command -> socket_type == CLIENT_TCP_SOCKET) {
         socket = client -> tcp_socket;
     }
-    else if (socket_type == CLIENT_UDP_SOCKET) {
+    else if (command -> socket_type == CLIENT_UDP_SOCKET) {
         socket = client -> udp_socket;
     }
     else {
         return;
     }
 
-    send(socket, command, BUFFER_LENGTH, 0);
+    send(socket, command -> command, BUFFER_LENGTH, 0);
 }
 
 void clientClearCommand(ClientCommand * command) {

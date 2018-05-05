@@ -8,6 +8,19 @@
 #define MANAGER_CLIENT 0
 #define MANAGER_SERVER 1
 
+#define NO 0
+#define YES 1
+
+#define ERROR_NOT_FOUND -1
+#define ERROR 0
+#define LOGIN 1
+#define LOGOUT 2
+#define CMD_COUNT 3
+
+#define ERROR_CMD "error"
+#define LOGIN_CMD "login"
+#define LOGOUT_CMD "logout"
+
 typedef struct Login {
     int socket;
     int attempts;
@@ -36,7 +49,12 @@ Login * removeLoginBySocket(Login * start, int socket);
 void printLogin(Login * login);
 
 Manager * createManager(int type);
-void manage(Manager * manager);
+void maiBineDadeamLaASE(Manager * manager);
+int getCommandID(char * command);
+int isUserInput(Manager * manager, void * command);
+
+void handleError(Manager * manager, void * command);
+void handleLogin(Manager * manager, void * command);
 
 
 #endif

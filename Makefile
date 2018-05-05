@@ -21,7 +21,7 @@ src/ConnectionManager.o: src/ConnectionManager.c src/ConnectionManager.h
 src/CommandManager.o: src/CommandManager.c src/CommandManager.h
 	$(GCC) $(FLAGS) -c $< -o $@
 
-client: client.o src/Logger.o src/ConnectionManager.o
+client: client.o src/CardManager.o src/Logger.o src/ConnectionManager.o src/CommandManager.o
 	$(GCC) -o $@ $^
 
 client.o: client.c

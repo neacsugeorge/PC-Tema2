@@ -68,7 +68,7 @@ void log_error (Logger * logger, char * prefix, int code, char * extra) {
 
     free (printable);
 }
-void log_message (Logger * logger, char * prefix, char * message) {
+void log_message (Logger * logger, char * prefix, char * message, int userInput) {
     char * printable = NULL;
 
     int prefix_len = 0;
@@ -89,9 +89,14 @@ void log_message (Logger * logger, char * prefix, char * message) {
     int len = prefix_len + message_len + SPACES_AND_OTHER;
     printable = (char *)malloc(len);
 
-    snprintf(printable, len, "%s%s\n\n", prefix != NULL ? prefix : "", message != NULL ? message : "");
+    snprintf(printable, len, "%s%s\n%s",
+        prefix != NULL ? prefix : "",
+        message != NULL ? message : "",
+        userInput ? "" : "\n");
 
-    printf("%s", printable);
+    if (!userInput) {
+        printf("%s", printable);
+    }
     if (logger != NULL) {
         fprintf(logger -> logfile, "%s", printable);
     }
