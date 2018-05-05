@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "src/CardManager.h"
+#include "src/ConnectionManager.h"
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -13,7 +14,12 @@ int main(int argc, char *argv[]) {
     printDatabase(*db);
     printCard(*getCard(db, "111789"));
     
+    Server * server = createServer(argv[1]);
     puts("Server on");
+
+    while (1) {
+        serverPrintCommand(serverGetCommand(server));
+    }
     
     return 0;
 }
