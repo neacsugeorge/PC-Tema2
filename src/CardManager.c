@@ -52,9 +52,9 @@ void fillDatabase(Database * db, char * filename) {
 
         new_card -> locked = 0;
         fscanf(file, "%12s %12s %6s %4s %8s %lf",
-            &new_card -> nume, &new_card -> prenume,
-            &new_card -> numar_card, &new_card -> pin,
-            &new_card -> parola_secreta, &new_card ->sold);
+            (char *)&new_card -> nume, (char *)&new_card -> prenume,
+            (char *)&new_card -> numar_card, (char *)&new_card -> pin,
+            (char *)&new_card -> parola_secreta, &new_card ->sold);
 
         db -> cards[i] = new_card;
     }
