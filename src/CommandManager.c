@@ -212,11 +212,15 @@ void handleError(Manager * manager, void * command) {
 void handleMessage(Manager * manager, void * command) {
     if (manager -> type == MANAGER_CLIENT) {
         char message[BUFFER_LENGTH];
-        sscanf(command, "message %s", message);
+        strcpy(message, ((ClientCommand *)command) -> command + 8);
         
         int socket_type = ((ClientCommand *)command) -> socket_type;
         if (socket_type == CLIENT_TCP_SOCKET) {
             log_message(manager -> logger, IBANK, message, 0);
+
+            if (strncmp(message, "Welcome", 7) == 0) {
+                manager -> loggedIn = 1;
+            }
         }
         else if (socket_type == CLIENT_UDP_SOCKET) {
             log_message(manager -> logger, UNLOCK, message, 0);
