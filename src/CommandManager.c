@@ -10,7 +10,8 @@ char * COMMAND[] = {
     TRANSFER_CMD,
     UNLOCK_CMD,
     QUIT_CMD,
-    MESSAGE_CMD
+    MESSAGE_CMD,
+    END_CONNECTION_CMD
 };
 
 Login * addLogin(Login * start, Login * login) {
@@ -47,6 +48,19 @@ Login * findLoginBySocket(Login * start, int socket) {
         }
 
         start = start -> next;
+    }
+
+    return start;
+}
+
+Login * findActiveLogin(Login * start, char card[7]) {
+    start = findLoginByCard(start, card);
+    if (start == NULL) {
+        return start;
+    }
+
+    while (start != NULL && !start -> active) {
+        start = findLoginByCard(start -> next, card);
     }
 
     return start;
@@ -165,6 +179,9 @@ void maiBineDadeamLaASE(Manager * manager) {
             break;
         case LOGIN:
                 handleLogin(manager, rawCommand);
+            break;
+        case END_CONNECTION:
+                handleEndConnection(manager, rawCommand);
             break;
     }
 }
@@ -293,9 +310,12 @@ void handleLogin(Manager * manager, void * command) {
             else {
                 // Good PIN
                 login = findLoginByCard(manager -> loginManager, numar_card);
-                Login * myLogin = findLoginBySocket(manager -> loginManager, socket);
+                Login * myLogin = findLoginBySocket(manager -> loginManager, socket),
+                      * activeLogin = findActiveLogin(manager -> loginManager, numar_card);
 
-                if (login == myLogin) {
+                if (activeLogin != NULL) {
+                    snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_SESSION_EXISTS);
+                } else if (login == myLogin) {
                     if (login == NULL) {
                         login = (Login *)malloc(sizeof(Login));
                         manager -> loginManager = addLogin(manager -> loginManager, login);
@@ -310,32 +330,42 @@ void handleLogin(Manager * manager, void * command) {
                     snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message Welcome %s %s",
                             card -> nume, card -> prenume);
                 }
-                else if (login != NULL) {
-                    while (login != NULL && !login -> active) {
-                        login = findLoginByCard(login -> next, numar_card);
+                else {
+                    if (myLogin == NULL) {
+                        myLogin = (Login *)malloc(sizeof(Login));
+                        manager -> loginManager = addLogin(manager -> loginManager, myLogin);
+                        
+                        myLogin -> socket = socket;
                     }
 
-                    // Existing active session with this card
-                    if (login != NULL) {
-                        snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_SESSION_EXISTS);
-                    }
-                    else {
-                        login = (Login *)malloc(sizeof(Login));
-                        manager -> loginManager = addLogin(manager -> loginManager, login);
+                    strcpy(myLogin -> card, numar_card);
+                    myLogin -> attempts = 0;
+                    myLogin -> active = 1;
 
-                        login -> socket = socket;
-                        strcpy(login -> card, numar_card);
-
-                        login -> attempts = 0;
-                        login -> active = 1;
-
-                        snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message Welcome %s %s",
-                                card -> nume, card -> prenume);
-                    }
+                    snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message Welcome %s %s",
+                            card -> nume, card -> prenume);
                 }
             }
             
             serverSendCommand(manager -> connection, command);
+        }
+    }
+}
+
+void handleEndConnection(Manager * manager, void * command) {
+    if (manager -> type == MANAGER_SERVER) {
+        int socket = ((ServerCommand *)command) -> socket;
+
+        int removeCount = 0;
+        Login * login = findLoginBySocket(manager -> loginManager, socket);
+
+        while (login != NULL) {
+            login = findLoginBySocket(login -> next, socket);
+            removeCount++;
+        }
+
+        while (removeCount --) {
+            manager -> loginManager = removeLoginBySocket(manager -> loginManager, socket);
         }
     }
 }

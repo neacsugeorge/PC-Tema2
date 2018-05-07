@@ -20,7 +20,8 @@
 #define UNLOCK_ID 5
 #define QUIT 6
 #define MESSAGE 7
-#define CMD_COUNT 8
+#define END_CONNECTION 8
+#define CMD_COUNT 9
 
 #define ERROR_CMD "error"
 #define LOGIN_CMD "login"
@@ -29,6 +30,7 @@
 #define TRANSFER_CMD "transfer"
 #define UNLOCK_CMD "unlock"
 #define QUIT_CMD "quit"
+#define END_CONNECTION_CMD "endconnection"
 #define MESSAGE_CMD "message"
 
 typedef struct Login {
@@ -54,6 +56,7 @@ typedef struct {
 Login * addLogin(Login * start, Login * login);
 Login * findLoginByCard(Login * start, char card[7]);
 Login * findLoginBySocket(Login * start, int socket);
+Login * findActiveLogin(Login * start, char card[7]);
 Login * removeLoginByCard(Login * start, char card[7]);
 Login * removeLoginBySocket(Login * start, int socket);
 void printLogin(Login * login);
@@ -66,6 +69,7 @@ int isUserInput(Manager * manager, void * command);
 void handleError(Manager * manager, void * command);
 void handleMessage(Manager * manager, void * command);
 void handleLogin(Manager * manager, void * command);
+void handleEndConnection(Manager * manager, void * command);
 
 
 #endif
