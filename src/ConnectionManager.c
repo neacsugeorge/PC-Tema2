@@ -128,6 +128,11 @@ void clientPrintCommand(ClientCommand * command) {
     puts("ENDCOMMAND------------------------------");
 }
 
+void closeClient(Client * client) {
+    close(client -> tcp_socket);
+    close(client -> udp_socket);
+}
+
 Server * createServer(char * server_port) {
     Server * server = NULL;
     server = (Server *)malloc(sizeof(Server));
@@ -265,9 +270,6 @@ void serverSendCommand(Server * server, ServerCommand * command) {
     int command_length = strlen(command -> command);
     socklen_t address_len = sizeof(command -> source);
 
-    // TODO: remove me
-    serverPrintCommand(command);
-
     if (command -> type == SERVER_TCP_RECEIVE) {
         send(command -> socket, command -> command, command_length, 0);
     }
@@ -291,4 +293,15 @@ void serverPrintCommand(ServerCommand * command) {
         command -> socket, inet_ntoa(command -> source.sin_addr), ntohs(command -> source.sin_port)
         );
     puts("ENDCOMMAND------------------------------");
+}
+
+void closeServer(Server * server) {
+    int i = 1;
+    for (; i < server -> max_descriptor_id; i++) {
+        if (FD_ISSET(i, &server -> descriptors) && i != server -> udp_socket && i != server -> tcp_socket) {
+            close(i);
+        }
+    }
+    close(server -> udp_socket);
+    close(server -> tcp_socket);
 }

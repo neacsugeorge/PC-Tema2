@@ -63,7 +63,9 @@ void log_error (Logger * logger, char * prefix, int code, char * extra) {
 
     printf("%s", printable);
     if (logger != NULL) {
+        printable[strlen(printable) - 1] = 0;
         fprintf(logger -> logfile, "%s", printable);
+        fflush(logger -> logfile);
     }
 
     free (printable);
@@ -98,7 +100,9 @@ void log_message (Logger * logger, char * prefix, char * message, int userInput)
         printf("%s", printable);
     }
     if (logger != NULL) {
+        printable[strlen(printable) - 1] = 0;
         fprintf(logger -> logfile, "%s", printable);
+        fflush(logger -> logfile);
     }
 
     free(printable);

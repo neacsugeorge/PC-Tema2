@@ -217,12 +217,12 @@ void maiBineDadeamLaASE(Manager * manager) {
 
     if (manager -> type == MANAGER_CLIENT) {
         rawCommand = clientGetCommand(manager -> connection);
-        clientPrintCommand(rawCommand);
+        // clientPrintCommand(rawCommand);
         strcpy(identifiable, ((ClientCommand *)rawCommand) -> command);
     }
     else {
         rawCommand = serverGetCommand(manager -> connection);
-        serverPrintCommand(rawCommand);
+        // serverPrintCommand(rawCommand);
         strcpy(identifiable, ((ServerCommand *)rawCommand) -> command);
     }
 
@@ -230,8 +230,6 @@ void maiBineDadeamLaASE(Manager * manager) {
     if (isUserInput(manager, rawCommand)) {
         log_message(manager -> logger, NULL, identifiable, USER_INPUT);
     }
-
-    printf("ID: %d\n", ID);
 
     switch(ID) {
         case ERROR:
@@ -266,6 +264,9 @@ void maiBineDadeamLaASE(Manager * manager) {
                     strcpy(((ServerCommand *)rawCommand) -> command, ((ServerCommand *)rawCommand) -> command + 7);
                     handleUnlock(manager, rawCommand, UNLOCK_STEP_DONE);
                 }
+            break;
+        case QUIT:
+                handleQuit(manager, rawCommand);
             break;
         case END_CONNECTION:
                 handleEndConnection(manager, rawCommand);
@@ -653,6 +654,51 @@ void handleUnlock(Manager * manager, void * command, int step) {
         }
 
         serverSendCommand(manager -> connection, command);
+    }
+}
+
+void handleQuit(Manager * manager, void * command) {
+    if (manager -> type == MANAGER_CLIENT) {
+        if (((ClientCommand *)command) -> socket_type == CLIENT_INPUT) {
+            ((ClientCommand *)command) -> socket_type = CLIENT_TCP_SOCKET;
+            clientSendCommand(manager -> connection, command);
+        }
+
+        closeLogger(manager -> logger);
+        closeClient(manager -> connection);
+        exit(0);
+    }
+    else {
+        Server * server = manager -> connection;
+        if (((ServerCommand *)command) -> type == SERVER_INPUT) {
+            ServerCommand quit = {
+                .type = SERVER_TCP_RECEIVE,
+                .command = "quit",
+                .socket = 0
+            };
+            ServerCommand goodByeCruelWorld = {
+                .type = SERVER_TCP_RECEIVE,
+                .command = "message Server goes offline! Goodbye cruel world!",
+                .socket = 0
+            };
+
+            int i = 1;
+            for (; i < server -> max_descriptor_id; i++) {
+                if (FD_ISSET(i, &server -> descriptors) && i != server -> tcp_socket && i != server -> udp_socket) {
+                    quit.socket = goodByeCruelWorld.socket = i;
+                    serverSendCommand(server, &goodByeCruelWorld);
+                    serverSendCommand(server, &quit);
+                }
+            }
+
+            closeLogger(manager -> logger);
+            closeServer(server);
+            exit(0);
+        }
+        else {
+            // I don't care about the client here
+            // Will be handled by handleEndConnection
+        }
     }
 }
 

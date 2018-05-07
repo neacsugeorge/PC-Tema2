@@ -96,6 +96,7 @@ void handleLogout(Manager * manager, void * command);
 void handleListSold(Manager * manager, void * command);
 void handleTransfer(Manager * manager, void * command, int step);
 void handleUnlock(Manager * manager, void * command, int step);
+void handleQuit(Manager * manager, void * command);
 void handleEndConnection(Manager * manager, void * command);
 
 
