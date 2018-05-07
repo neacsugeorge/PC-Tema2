@@ -11,7 +11,8 @@ char * COMMAND[] = {
     UNLOCK_CMD,
     QUIT_CMD,
     MESSAGE_CMD,
-    END_CONNECTION_CMD
+    END_CONNECTION_CMD,
+    CONFIRM_TRANSFER_CMD
 };
 
 Login * addLogin(Login * start, Login * login) {
@@ -167,7 +168,7 @@ void maiBineDadeamLaASE(Manager * manager) {
 
     int ID = getCommandID(identifiable);
     if (isUserInput(manager, rawCommand)) {
-        log_message(manager -> logger, NULL, identifiable, 1);
+        log_message(manager -> logger, NULL, identifiable, USER_INPUT);
     }
 
     switch(ID) {
@@ -185,6 +186,15 @@ void maiBineDadeamLaASE(Manager * manager) {
             break;
         case LISTSOLD:
                 handleListSold(manager, rawCommand);
+            break;
+        case TRANSFER:
+                handleTransfer(manager, rawCommand, TRANSFER_STEP_INIT);
+            break;
+        case CONFIRM_TRANSFER:
+                if (manager -> type == MANAGER_SERVER) {
+                    strcpy(((ServerCommand *)rawCommand) -> command, ((ServerCommand *)rawCommand) -> command + 7);
+                    handleTransfer(manager, rawCommand, TRANSFER_STEP_DONE);
+                }
             break;
         case END_CONNECTION:
                 handleEndConnection(manager, rawCommand);
@@ -239,7 +249,7 @@ void handleMessage(Manager * manager, void * command) {
         
         int socket_type = ((ClientCommand *)command) -> socket_type;
         if (socket_type == CLIENT_TCP_SOCKET) {
-            log_message(manager -> logger, IBANK, message, 0);
+            log_message(manager -> logger, IBANK, message, NOT_USER_INPUT);
 
             // Connected
             if (strncmp(message, "Welcome", 7) == 0) {
@@ -251,7 +261,7 @@ void handleMessage(Manager * manager, void * command) {
             }
         }
         else if (socket_type == CLIENT_UDP_SOCKET) {
-            log_message(manager -> logger, UNLOCK, message, 0);
+            log_message(manager -> logger, UNLOCK, message, NOT_USER_INPUT);
         }
     }
 }
@@ -411,6 +421,94 @@ void handleListSold(Manager * manager, void * command) {
             }
         }
 
+        serverSendCommand(manager -> connection, command);
+    }
+}
+
+void handleTransfer(Manager * manager, void * command, int step) {
+    char numar_card[7];
+    char nume[13], prenume[13];
+    double amount;
+
+    if (manager -> type == MANAGER_CLIENT) {
+        if (!manager -> loggedIn) {
+            log_error(manager -> logger, NULL, ERROR_NOT_AUTHENTICATED, NULL);
+            return;
+        }
+
+        if (((ClientCommand *)command) -> socket_type == CLIENT_INPUT) {
+            ((ClientCommand *)command) -> socket_type = CLIENT_TCP_SOCKET;
+            clientSendCommand(manager -> connection, command);
+        }
+        else {
+            sscanf(((ClientCommand *)command) -> command, "transfer %s %lf %12s %12s",
+                    (char*)numar_card, &amount, (char *)nume, (char *)prenume);
+            
+            if (amount - (int)amount > EPSILON) {
+                snprintf(((ClientCommand *)command) -> command, BUFFER_LENGTH, "Transfer %.2lf catre %s %s? [y/n]", amount, nume, prenume);
+            }
+            else {
+                snprintf(((ClientCommand *)command) -> command, BUFFER_LENGTH, "Transfer %d catre %s %s? [y/n]", (int)amount, nume, prenume);
+            }
+            
+            log_message(manager -> logger, IBANK, ((ClientCommand *)command) -> command, BEFORE_USER_INPUT);
+
+            ClientCommand * answer = clientGetCommand(manager -> connection);
+            log_message(manager -> logger, NULL, answer -> command, USER_INPUT);
+
+            if (answer -> command[0] == 'y' && answer -> command[1] == '\n') {
+                snprintf(((ClientCommand *)command) -> command, BUFFER_LENGTH, "confirmtransfer %s %.2lf", numar_card, amount);
+                clientSendCommand(manager -> connection, command);
+            }
+            else {
+                log_error(manager -> logger, IBANK, ERROR_OPERATION_CANCELED, NULL);
+            }
+        }
+    }
+    else {
+        int socket = ((ServerCommand *)command) -> socket;
+
+        Login * login = findLoginBySocket(manager -> loginManager, socket);
+
+        if (login == NULL || !login -> active) {
+            snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_OPERATION_FAIL);
+        }
+        else {
+            sscanf(((ServerCommand *)command) -> command, "transfer %s %lf", numar_card, &amount);
+
+            Card * card = getCard(manager -> db, login -> card),
+                 * destination = getCard(manager -> db, numar_card);
+
+            if (card == NULL) {
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_OPERATION_FAIL);
+            }
+            else {
+
+                if (step == TRANSFER_STEP_INIT) {
+                    if (destination == NULL) {
+                        snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_UNKNOWN_CARD);
+                    }
+                    else if (amount < 0) {
+                        snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_OPERATION_FAIL);
+                    }
+                    else if (!canTransfer(card, amount)) {
+                        snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_INSUFFICIENT_FUNDS);
+                    }
+                    else {
+                        snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "transfer %s %.2lf %s %s",
+                            (char *)numar_card, amount, destination -> nume, destination -> prenume);
+                    }
+                }
+                else {
+                    transfer(card, destination, amount);
+                    snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message Transfer realizat cu succes");
+                }
+
+            }
+
+        }
+        
+        // Finally send the command back
         serverSendCommand(manager -> connection, command);
     }
 }

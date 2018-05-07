@@ -41,6 +41,10 @@
 #define FILENAME_LENGTH 12
 #define SPACES_AND_OTHER 20
 
+#define NOT_USER_INPUT 0
+#define USER_INPUT 1
+#define BEFORE_USER_INPUT 2
+
 typedef struct {
     FILE * logfile;
 } Logger;

@@ -21,7 +21,8 @@
 #define QUIT 6
 #define MESSAGE 7
 #define END_CONNECTION 8
-#define CMD_COUNT 9
+#define CONFIRM_TRANSFER 9
+#define CMD_COUNT 10
 
 #define ERROR_CMD "error"
 #define LOGIN_CMD "login"
@@ -32,6 +33,10 @@
 #define QUIT_CMD "quit"
 #define END_CONNECTION_CMD "endconnection"
 #define MESSAGE_CMD "message"
+#define CONFIRM_TRANSFER_CMD "confirmtransfer"
+
+#define TRANSFER_STEP_INIT 0
+#define TRANSFER_STEP_DONE 1
 
 typedef struct Login {
     int socket;
@@ -71,6 +76,7 @@ void handleMessage(Manager * manager, void * command);
 void handleLogin(Manager * manager, void * command);
 void handleLogout(Manager * manager, void * command);
 void handleListSold(Manager * manager, void * command);
+void handleTransfer(Manager * manager, void * command, int step);
 void handleEndConnection(Manager * manager, void * command);
 
 

@@ -94,7 +94,7 @@ void log_message (Logger * logger, char * prefix, char * message, int userInput)
         message != NULL ? message : "",
         userInput ? "" : "\n");
 
-    if (!userInput) {
+    if (userInput == NOT_USER_INPUT || userInput == BEFORE_USER_INPUT) {
         printf("%s", printable);
     }
     if (logger != NULL) {

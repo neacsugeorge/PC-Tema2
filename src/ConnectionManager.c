@@ -265,6 +265,9 @@ void serverSendCommand(Server * server, ServerCommand * command) {
     int command_length = strlen(command -> command);
     socklen_t address_len = sizeof(command -> source);
 
+    // TODO: remove me
+    serverPrintCommand(command);
+
     if (command -> type == SERVER_TCP_RECEIVE) {
         send(command -> socket, command -> command, command_length, 0);
     }
