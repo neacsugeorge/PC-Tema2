@@ -70,6 +70,7 @@ void handleError(Manager * manager, void * command);
 void handleMessage(Manager * manager, void * command);
 void handleLogin(Manager * manager, void * command);
 void handleLogout(Manager * manager, void * command);
+void handleListSold(Manager * manager, void * command);
 void handleEndConnection(Manager * manager, void * command);
 
 

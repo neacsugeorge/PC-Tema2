@@ -183,6 +183,9 @@ void maiBineDadeamLaASE(Manager * manager) {
         case LOGOUT:
                 handleLogout(manager, rawCommand);
             break;
+        case LISTSOLD:
+                handleListSold(manager, rawCommand);
+            break;
         case END_CONNECTION:
                 handleEndConnection(manager, rawCommand);
             break;
@@ -373,6 +376,40 @@ void handleLogout(Manager * manager, void * command) {
     else {
         handleEndConnection(manager, command);
         snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message Clientul a fost deconectat");
+
+        serverSendCommand(manager -> connection, command);
+    }
+}
+
+void handleListSold(Manager * manager, void * command) {
+    if (manager -> type == MANAGER_CLIENT) {
+        if (!manager -> loggedIn) {
+            log_error(manager -> logger, NULL, ERROR_NOT_AUTHENTICATED, NULL);
+            return;
+        }
+
+        ((ClientCommand *)command) -> socket_type = CLIENT_TCP_SOCKET;
+        clientSendCommand(manager -> connection, command);
+    }
+    else {
+        int socket = ((ServerCommand *)command) -> socket;
+
+        Login * login = findLoginBySocket(manager -> loginManager, socket);
+
+        // Not authenticated
+        if (login == NULL || !login -> active) {
+            snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_OPERATION_FAIL);
+        }
+        else {
+            Card * card = getCard(manager -> db, login -> card);
+
+            if (card == NULL) {
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_OPERATION_FAIL);
+            }
+            else {
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message %.2lf", card -> sold);
+            }
+        }
 
         serverSendCommand(manager -> connection, command);
     }
