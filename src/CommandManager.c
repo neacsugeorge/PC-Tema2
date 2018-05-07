@@ -12,8 +12,63 @@ char * COMMAND[] = {
     QUIT_CMD,
     MESSAGE_CMD,
     END_CONNECTION_CMD,
-    CONFIRM_TRANSFER_CMD
+    CONFIRM_TRANSFER_CMD,
+    CONFIRM_UNLOCK_CMD
 };
+
+UnlockOperation * addUnlock(UnlockOperation * start, UnlockOperation * unlock) {
+    unlock -> next = NULL;
+
+    if (start == NULL) {
+        return unlock;
+    }
+
+    UnlockOperation * head = start;
+    while (start -> next != NULL) {
+        start = start -> next;
+    }
+    start -> next = unlock;
+
+    return head;
+}
+UnlockOperation * findUnlock(UnlockOperation * start, char card[7]) {
+    while (start != NULL) {
+        if (strncmp(start -> card, card, 6) == 0) {
+            return start;
+        }
+
+        start = start -> next;
+    }
+
+    return start;
+}
+UnlockOperation * removeUnlock(UnlockOperation * start, char card[7]) {
+    if (start == NULL) {
+        return start;
+    }
+
+    UnlockOperation * head = start;
+    UnlockOperation * walk = NULL;
+
+    if (strncmp(start -> card, card, 6) == 0) {
+        head = start -> next;
+        free(start);
+        return head;
+    }
+
+    while (start -> next != NULL) {
+        if (strncmp(start -> next -> card, card, 6) == 0) {
+            walk = start -> next;
+            start -> next = start -> next -> next;
+            free(walk);
+            break;
+        }
+
+        start = start -> next;
+    }
+
+    return head;
+}
 
 Login * addLogin(Login * start, Login * login) {
     login -> next = NULL;
@@ -22,12 +77,13 @@ Login * addLogin(Login * start, Login * login) {
         return login;
     }
 
+    Login * head = start;
     while (start -> next != NULL) {
         start = start -> next;
     }
     start -> next = login;
 
-    return start;
+    return head;
 }
 
 Login * findLoginByCard(Login * start, char card[7]) {
@@ -140,13 +196,17 @@ Manager * createManager(int type) {
     manager = (Manager *)malloc(sizeof(Manager));
 
     manager -> type = type;
+
     manager -> loggedIn = 0;
+    manager -> last_card[0] = 0;
 
     manager -> connection = NULL;
 
     manager -> db = NULL;
     manager -> logger = NULL;
+
     manager -> loginManager = NULL;
+    manager -> unlockManager = NULL;
 
     return manager;
 }
@@ -171,6 +231,8 @@ void maiBineDadeamLaASE(Manager * manager) {
         log_message(manager -> logger, NULL, identifiable, USER_INPUT);
     }
 
+    printf("ID: %d\n", ID);
+
     switch(ID) {
         case ERROR:
                 handleError(manager, rawCommand);
@@ -194,6 +256,15 @@ void maiBineDadeamLaASE(Manager * manager) {
                 if (manager -> type == MANAGER_SERVER) {
                     strcpy(((ServerCommand *)rawCommand) -> command, ((ServerCommand *)rawCommand) -> command + 7);
                     handleTransfer(manager, rawCommand, TRANSFER_STEP_DONE);
+                }
+            break;
+        case UNLOCK_ID:
+                handleUnlock(manager, rawCommand, UNLOCK_STEP_INIT);
+            break;
+        case CONFIRM_UNLOCK:
+                if (manager -> type == MANAGER_SERVER) {
+                    strcpy(((ServerCommand *)rawCommand) -> command, ((ServerCommand *)rawCommand) -> command + 7);
+                    handleUnlock(manager, rawCommand, UNLOCK_STEP_DONE);
                 }
             break;
         case END_CONNECTION:
@@ -267,19 +338,21 @@ void handleMessage(Manager * manager, void * command) {
 }
 
 void handleLogin(Manager * manager, void * command) {
+    char numar_card[7];
+    char pin[5];
+
     if (manager -> type == MANAGER_CLIENT) {
         if (manager -> loggedIn) {
             log_error(manager -> logger, IBANK, ERROR_SESSION_EXISTS, NULL);
             return;
         }
 
+        sscanf(((ClientCommand *)command) -> command, "login %6s %4s", (char *)manager -> last_card, (char *)pin);
+
         ((ClientCommand *)command) -> socket_type = CLIENT_TCP_SOCKET;
         clientSendCommand(manager -> connection, command);
     }
     else {
-        char numar_card[7];
-        char pin[5];
-
         int socket = ((ServerCommand *)command) -> socket;
         sscanf(((ServerCommand *)command) -> command, "login %6s %4s", (char *)numar_card, (char *)pin);
 
@@ -509,6 +582,76 @@ void handleTransfer(Manager * manager, void * command, int step) {
         }
         
         // Finally send the command back
+        serverSendCommand(manager -> connection, command);
+    }
+}
+
+void handleUnlock(Manager * manager, void * command, int step) {
+    if (manager -> type == MANAGER_CLIENT) {
+        if (((ClientCommand *)command) -> socket_type == CLIENT_INPUT) {
+            snprintf(((ClientCommand *)command) -> command + 6, BUFFER_LENGTH - 6, " %s", (char *)manager -> last_card);
+            
+            ((ClientCommand *)command) -> socket_type = CLIENT_UDP_SOCKET;
+        }
+        else {
+            log_message(manager -> logger, UNLOCK, "Trimite parola secreta", BEFORE_USER_INPUT);
+
+            ClientCommand * answer = clientGetCommand(manager -> connection);
+            
+            int len = strlen(((ClientCommand *)command) -> command);
+            if (((ClientCommand *)command) -> command[len - 1] == '\n') {
+                ((ClientCommand *)command) -> command[len - 1] = 0;
+            }
+
+            snprintf(((ClientCommand *)command) -> command + len, BUFFER_LENGTH - len, " %s", answer -> command);
+            snprintf(answer -> command, BUFFER_LENGTH, "confirm%s", ((ClientCommand *)command) -> command);
+            strcpy(((ClientCommand *)command) -> command, answer -> command);
+        }
+        
+        clientSendCommand(manager -> connection, command);
+    }
+    else {
+        char numar_card[7];
+        char password[9];
+
+        Card * card = NULL;
+
+        if (step == UNLOCK_STEP_INIT) {
+            sscanf(((ServerCommand *)command) -> command, "unlock %s", (char *)numar_card);
+
+            card = getCard(manager -> db, numar_card);
+            if (card == NULL) {
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_UNKNOWN_CARD);
+            }
+            else if (!isLocked(card)) {
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_OPERATION_FAIL);
+            }
+            else if (findUnlock(manager -> unlockManager, numar_card) != NULL) {
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_UNLOCK_FAIL);
+            }
+            else {
+                UnlockOperation * unlockOperation = (UnlockOperation *)malloc(sizeof(UnlockOperation));
+                strcpy(unlockOperation -> card, numar_card);
+                manager -> unlockManager = addUnlock(manager -> unlockManager, unlockOperation);
+            }
+        }
+        else {
+            sscanf(((ServerCommand *)command) -> command, "unlock %s %s", (char *)numar_card, (char *)password);
+
+            card = getCard(manager -> db, numar_card);
+            if (card == NULL) {
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_UNKNOWN_CARD);
+            }
+            else if (unlock(card, password)) {
+                manager -> unlockManager = removeUnlock(manager -> unlockManager, numar_card);
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message Card deblocat");
+            }
+            else {
+                manager -> unlockManager = removeUnlock(manager -> unlockManager, numar_card);                
+                snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "error %d", ERROR_UNLOCK_FAIL);
+            }
+        }
+
         serverSendCommand(manager -> connection, command);
     }
 }

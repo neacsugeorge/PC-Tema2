@@ -96,7 +96,7 @@ void lock(Card * card) {
 }
 
 unsigned char unlock(Card * card, char * parola_secreta) {
-    if (strcmp(card -> parola_secreta, parola_secreta) == 0) {
+    if (strncmp(card -> parola_secreta, parola_secreta, strlen(card -> parola_secreta)) == 0) {
         card -> locked = 0;
         return 1;
     }

@@ -22,7 +22,8 @@
 #define MESSAGE 7
 #define END_CONNECTION 8
 #define CONFIRM_TRANSFER 9
-#define CMD_COUNT 10
+#define CONFIRM_UNLOCK 10
+#define CMD_COUNT 11
 
 #define ERROR_CMD "error"
 #define LOGIN_CMD "login"
@@ -34,9 +35,13 @@
 #define END_CONNECTION_CMD "endconnection"
 #define MESSAGE_CMD "message"
 #define CONFIRM_TRANSFER_CMD "confirmtransfer"
+#define CONFIRM_UNLOCK_CMD "confirmunlock"
 
 #define TRANSFER_STEP_INIT 0
 #define TRANSFER_STEP_DONE 1
+
+#define UNLOCK_STEP_INIT 0
+#define UNLOCK_STEP_DONE 1
 
 typedef struct Login {
     int socket;
@@ -46,15 +51,24 @@ typedef struct Login {
     struct Login * next;
 } Login;
 
+typedef struct UnlockOperation {
+    char card[7];
+    struct UnlockOperation * next;
+} UnlockOperation;
+
 typedef struct {
     int type;
+
     int loggedIn;
+    char last_card[7];
 
     void * connection;
 
     Database * db;
     Logger * logger;
+
     Login * loginManager;
+    UnlockOperation * unlockManager;
 
 } Manager;
 
@@ -65,6 +79,10 @@ Login * findActiveLogin(Login * start, char card[7]);
 Login * removeLoginByCard(Login * start, char card[7]);
 Login * removeLoginBySocket(Login * start, int socket);
 void printLogin(Login * login);
+
+UnlockOperation * addUnlock(UnlockOperation * start, UnlockOperation * unlock);
+UnlockOperation * findUnlock(UnlockOperation * start, char card[7]);
+UnlockOperation * removeUnlock(UnlockOperation * start, char card[7]);
 
 Manager * createManager(int type);
 void maiBineDadeamLaASE(Manager * manager);
@@ -77,6 +95,7 @@ void handleLogin(Manager * manager, void * command);
 void handleLogout(Manager * manager, void * command);
 void handleListSold(Manager * manager, void * command);
 void handleTransfer(Manager * manager, void * command, int step);
+void handleUnlock(Manager * manager, void * command, int step);
 void handleEndConnection(Manager * manager, void * command);
 
 
