@@ -69,6 +69,7 @@ int isUserInput(Manager * manager, void * command);
 void handleError(Manager * manager, void * command);
 void handleMessage(Manager * manager, void * command);
 void handleLogin(Manager * manager, void * command);
+void handleLogout(Manager * manager, void * command);
 void handleEndConnection(Manager * manager, void * command);
 
 

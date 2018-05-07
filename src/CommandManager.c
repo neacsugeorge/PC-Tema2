@@ -180,6 +180,9 @@ void maiBineDadeamLaASE(Manager * manager) {
         case LOGIN:
                 handleLogin(manager, rawCommand);
             break;
+        case LOGOUT:
+                handleLogout(manager, rawCommand);
+            break;
         case END_CONNECTION:
                 handleEndConnection(manager, rawCommand);
             break;
@@ -235,8 +238,13 @@ void handleMessage(Manager * manager, void * command) {
         if (socket_type == CLIENT_TCP_SOCKET) {
             log_message(manager -> logger, IBANK, message, 0);
 
+            // Connected
             if (strncmp(message, "Welcome", 7) == 0) {
                 manager -> loggedIn = 1;
+            }
+            // Disconnected
+            if (strncmp(message, "Clientul a fost deconectat", 26) == 0) {
+                manager -> loggedIn = 0;
             }
         }
         else if (socket_type == CLIENT_UDP_SOCKET) {
@@ -349,6 +357,24 @@ void handleLogin(Manager * manager, void * command) {
             
             serverSendCommand(manager -> connection, command);
         }
+    }
+}
+
+void handleLogout(Manager * manager, void * command) {
+    if (manager -> type == MANAGER_CLIENT) {
+        if (!manager -> loggedIn) {
+            log_error(manager -> logger, NULL, ERROR_NOT_AUTHENTICATED, NULL);
+            return;
+        }
+
+        ((ClientCommand *)command) -> socket_type = CLIENT_TCP_SOCKET;
+        clientSendCommand(manager -> connection, command);
+    }
+    else {
+        handleEndConnection(manager, command);
+        snprintf(((ServerCommand *)command) -> command, BUFFER_LENGTH, "message Clientul a fost deconectat");
+
+        serverSendCommand(manager -> connection, command);
     }
 }
 
