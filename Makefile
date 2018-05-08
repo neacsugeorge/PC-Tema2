@@ -26,3 +26,6 @@ client: client.o src/CardManager.o src/Logger.o src/ConnectionManager.o src/Comm
 
 client.o: client.c
 	$(GCC) $(FLAGS) -c $^
+
+clean:
+	rm -rf server client client-*.log *.o src/*.o

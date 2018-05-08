@@ -355,7 +355,7 @@ void handleLogin(Manager * manager, void * command) {
     }
     else {
         int socket = ((ServerCommand *)command) -> socket;
-        sscanf(((ServerCommand *)command) -> command, "login %6s %4s", (char *)numar_card, (char *)pin);
+        sscanf(((ServerCommand *)command) -> command, "login %6s %5s", (char *)numar_card, (char *)pin);
 
         Card * card = getCard(manager -> db, numar_card);
         if (card == NULL) {
@@ -371,7 +371,7 @@ void handleLogin(Manager * manager, void * command) {
             }
 
             Login * login = NULL;
-            if (strncmp(card -> pin, pin, 4) != 0) {
+            if (strcmp(card -> pin, pin) != 0) {
                 // Wrong PIN
                 login = findLoginBySocket(manager -> loginManager, socket);
 
